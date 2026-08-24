@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sprout2D — a language for 2D games</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --soil-900:#1b1710; --soil-800:#241d14; --soil-700:#332a1c; --soil-600:#453824;
+    --paper:#efe7d6; --paper-dim:#9c9382;
+    --sprout-500:#8bc53f; --sprout-300:#c3e894;
+    --clay-500:#cf7f4c; --error:#e0765a; --panel:#1e1a12;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; height:100%; }
+  body{
+    background:var(--soil-900); color:var(--paper);
+    font-family:'IBM Plex Sans', sans-serif;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  h1,h2,h3{ font-family:'Fraunces', serif; font-weight:600; margin:0; }
+  code, .mono{ font-family:'IBM Plex Mono', monospace; }
+  ::selection{ background: var(--sprout-500); color: var(--soil-900); }
+
+  nav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 14px 26px; border-bottom:1px solid var(--soil-700);
+    background: var(--soil-800); position:sticky; top:0; z-index:20;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand .mark{ width:22px; height:22px; border-radius:6px; background: var(--sprout-500); display:inline-block;
+    box-shadow: 0 0 0 3px rgba(139,197,63,0.18); }
+  .brand span{ font-family:'Fraunces', serif; font-weight:700; font-size:18px; letter-spacing:.01em; }
+  .tabs{ display:flex; gap:4px; background: var(--soil-700); padding:4px; border-radius:8px; }
+  .tab-btn{
+    font-family:'IBM Plex Mono', monospace; font-size:13px;
+    padding:8px 16px; border-radius:6px; border:none; cursor:pointer;
+    background:transparent; color: var(--paper-dim);
+  }
+  .tab-btn.active{ background: var(--sprout-500); color: var(--soil-900); font-weight:600; }
+  .nav-right{ font-family:'IBM Plex Mono', monospace; font-size:12px; color: var(--paper-dim); }
+
+  main{ flex:1; display:flex; flex-direction:column; min-height:0; }
+  .view{ display:none; flex:1; min-height:0; }
+  .view.active{ display:flex; flex-direction:column; min-height:0; }
+
+  .ide-toolbar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:10px 16px; border-bottom:1px solid var(--soil-700); background: var(--soil-800);
+  }
+  select, .btn, input[type=text]{ font-family:'IBM Plex Mono', monospace; font-size:13px; }
+  select{ background: var(--soil-900); color: var(--paper); border:1px solid var(--soil-700); border-radius:6px; padding:8px 10px; }
+  .btn{
+    padding:8px 16px; border-radius:6px; border:1px solid transparent; cursor:pointer;
+    display:inline-flex; align-items:center; gap:8px; transition: transform .12s ease, background .12s ease;
+  }
+  .btn-primary{ background: var(--sprout-500); color: var(--soil-900); font-weight:600; }
+  .btn-primary:hover{ background: var(--sprout-300); transform: translateY(-1px); }
+  .btn-stop{ background: var(--error); color: var(--soil-900); font-weight:600; }
+  .btn-ghost{ border-color: var(--soil-600); color: var(--paper); background:transparent; }
+  .btn-ghost:hover{ border-color: var(--sprout-500); color: var(--sprout-300); }
+  .toolbar-spacer{ flex:1; }
+  .file-label{
+    display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:6px;
+    border:1px dashed var(--soil-600); color: var(--paper-dim); cursor:pointer; font-size:12.5px;
+  }
+  .file-label:hover{ border-color: var(--sprout-500); color: var(--sprout-300); }
+  .file-label input{ display:none; }
+  #asset-list{ font-size:11.5px; color: var(--paper-dim); display:flex; gap:8px; flex-wrap:wrap; }
+  #asset-list span{ background: var(--soil-700); padding:3px 8px; border-radius:4px; }
+
+  /* ---------- Code tab (CodeMirror) ---------- */
+  #code-container{ flex:1; min-height:0; display:flex; }
+  #code-container .CodeMirror{ flex:1; height:100%; font-family:'IBM Plex Mono', monospace; font-size:13.5px; line-height:1.6; }
+  .cm-s-sprout.CodeMirror{ background: #1e1a12; color: var(--paper); }
+  .cm-s-sprout .CodeMirror-gutters{ background:#1e1a12; border-right:1px solid var(--soil-700); }
+  .cm-s-sprout .CodeMirror-linenumber{ color:#5a5142; }
+  .cm-s-sprout .CodeMirror-cursor{ border-left:1px solid var(--sprout-500); }
+  .cm-s-sprout .CodeMirror-selected{ background: #3a4f1e; }
+  .cm-s-sprout .CodeMirror-activeline-background{ background: rgba(255,255,255,0.03); }
+  .cm-s-sprout .cm-keyword{ color: var(--sprout-500); font-weight:600; }
+  .cm-s-sprout .cm-builtin{ color: var(--sprout-300); }
+  .cm-s-sprout .cm-string{ color: var(--clay-500); }
+  .cm-s-sprout .cm-comment{ color:#766f5f; font-style:italic; }
+  .cm-s-sprout .cm-number{ color:#e0c88f; }
+  .cm-s-sprout .cm-variable{ color: var(--paper); }
+  .cm-s-sprout .cm-property{ color: var(--sprout-300); }
+  .CodeMirror-hints{ font-family:'IBM Plex Mono', monospace; font-size:13px; background: var(--soil-800); border:1px solid var(--soil-700); color: var(--paper); }
+  .CodeMirror-hint-active{ background: var(--sprout-500) !important; color: var(--soil-900) !important; }
+
+  /* ---------- Game tab ---------- */
+  .game-pane{ flex:1; display:flex; flex-direction:column; min-height:0; background: var(--panel); }
+  .canvas-wrap{
+    flex: 1 1 60%; display:flex; align-items:center; justify-content:center;
+    background:
+      linear-gradient(45deg, #201a11 25%, transparent 25%),
+      linear-gradient(-45deg, #201a11 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #201a11 75%),
+      linear-gradient(-45deg, transparent 75%, #201a11 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    background-color: #17130d;
+    padding:14px;
+  }
+  #game-canvas{ background:#14161d; border-radius:6px; box-shadow: 0 8px 30px rgba(0,0,0,0.45); image-rendering: pixelated; max-width:100%; }
+  .console-wrap{ flex: 0 0 34%; border-top:1px solid var(--soil-700); display:flex; flex-direction:column; min-height:0; }
+  .console-bar{
+    padding:8px 14px; font-family:'IBM Plex Mono', monospace; font-size:11.5px; letter-spacing:.08em;
+    text-transform:uppercase; color: var(--paper-dim); border-bottom:1px solid var(--soil-700);
+  }
+  #console-out{
+    flex:1; overflow:auto; padding:12px 14px; font-family:'IBM Plex Mono', monospace; font-size:13px;
+    color: var(--sprout-300); white-space:pre-wrap; line-height:1.6;
+  }
+  #console-out .err{ color: var(--error); }
+  #console-out .hint{ color: var(--paper-dim); }
+
+  .tut-layout{ flex:1; display:grid; grid-template-columns: 250px 1fr; min-height:0; }
+  @media (max-width: 800px){ .tut-layout{ grid-template-columns: 1fr; } }
+  .tut-nav{ border-right:1px solid var(--soil-700); background: var(--soil-800); overflow:auto; padding:18px 0; }
+  @media (max-width: 800px){ .tut-nav{ border-right:none; border-bottom:1px solid var(--soil-700); } }
+  .tut-nav .grp-label{ font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color: var(--clay-500); padding:6px 20px; margin-top:14px; }
+  .tut-nav button{
+    display:block; width:100%; text-align:left; background:none; border:none; color: var(--paper-dim);
+    padding:9px 20px; font-family:'IBM Plex Sans', sans-serif; font-size:14px; cursor:pointer; border-left:3px solid transparent;
+  }
+  .tut-nav button:hover{ color: var(--paper); }
+  .tut-nav button.active{ color: var(--sprout-300); border-left-color: var(--sprout-500); background: rgba(139,197,63,0.06); font-weight:600; }
+
+  .tut-content{ overflow:auto; padding: 36px 44px 80px; max-width: 760px; }
+  .tut-content h2{ font-size:30px; margin-bottom:6px; }
+  .tut-content .lesson-kicker{ font-family:'IBM Plex Mono', monospace; font-size:12px; color: var(--sprout-300); text-transform:uppercase; letter-spacing:.1em; margin-bottom:10px; }
+  .tut-content p{ color: var(--paper-dim); line-height:1.7; font-size:15.5px; }
+  .tut-content h3{ font-size:19px; margin-top:30px; margin-bottom:10px; color: var(--paper); }
+  .tut-content pre{
+    background: var(--soil-800); border:1px solid var(--soil-700); border-radius:8px; padding:16px 18px;
+    overflow-x:auto; font-family:'IBM Plex Mono', monospace; font-size:13.5px; line-height:1.65; color: var(--paper);
+    margin: 14px 0;
+  }
+  .tut-content .try-btn{ margin: 6px 0 10px; }
+  .tut-content ul{ color: var(--paper-dim); line-height:1.8; font-size:15px; padding-left:20px; }
+  .tut-content table{ width:100%; border-collapse:collapse; margin:16px 0; font-size:13.5px; }
+  .tut-content th, .tut-content td{ text-align:left; padding:8px 10px; border-bottom:1px solid var(--soil-700); }
+  .tut-content th{ color: var(--sprout-300); font-family:'IBM Plex Mono', monospace; font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; }
+  .lesson-nav-footer{ display:flex; justify-content:space-between; margin-top:44px; padding-top:20px; border-top:1px solid var(--soil-700); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand"><span class="mark"></span><span>Sprout2D</span></div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="code">Code</button>
+    <button class="tab-btn" data-tab="game">Game</button>
+    <button class="tab-btn" data-tab="tutorial">Tutorial</button>
+  </div>
+  <div class="nav-right">v0.1 · runs entirely in your browser</div>
+</nav>
+
+<div class="ide-toolbar" id="ide-toolbar">
+  <button class="btn btn-primary" id="run-btn">▸ Run</button>
+  <button class="btn btn-stop" id="stop-btn" style="display:none;">■ Stop</button>
+  <select id="example-picker">
+    <option value="">Load example…</option>
+    <option value="mover">01 — a moving square</option>
+    <option value="input">02 — keyboard input</option>
+    <option value="bounce">03 — bouncing ball</option>
+    <option value="collect">04 — collect the coins</option>
+    <option value="tap">05 — tap targets (touch-friendly)</option>
+    <option value="dodger">06 — full mini-game: Dodger</option>
+  </select>
+  <label class="file-label">⇪ upload image
+    <input type="file" id="image-upload" accept="image/*" multiple>
+  </label>
+  <div id="asset-list"></div>
+  <div class="toolbar-spacer"></div>
+</div>
+
+<main>
+  <section class="view active" id="view-code">
+    <div id="code-container"><textarea id="code-textarea"></textarea></div>
+  </section>
+
+  <section class="view" id="view-game">
+    <div class="game-pane">
+      <div class="canvas-wrap"><canvas id="game-canvas" width="480" height="360"></canvas></div>
+      <div class="console-wrap">
+        <div class="console-bar">console</div>
+        <div id="console-out"><span class="hint">Press Run to play. Errors and print() output show up here.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="view-tutorial">
+    <div class="tut-layout">
+      <div class="tut-nav" id="tut-nav"></div>
+      <div class="tut-content" id="tut-content"></div>
+    </div>
+  </section>
+</main>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/simple.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+
+<script>
+/* ============================================================
+   SPROUT2D — language core (lexer, parser, interpreter)
+   Extends the original Sprout scripting language with
+   game-development constructs: sprite, scene, on <event>,
+   vectors, and a set of runtime built-ins supplied by the host
+   (see runtime.js) for drawing, input, and collision.
+   ============================================================ */
+
+const KEYWORDS = new Set([
+  "let","fn","if","else","while","for","in","return","true","false",
+  "and","or","not","print","break",
+  "sprite","scene","on","update","vec"
+]);
+
+class SproutError extends Error {
+  constructor(msg, line){ super(msg); this.sproutLine = line; }
+}
+
+// ---------------- LEXER ----------------
+function lex(src){
+  const tokens = [];
+  let i = 0, line = 1;
+  const push = (type, value) => tokens.push({type, value, line});
+  while (i < src.length){
+    const c = src[i];
+    if (c === '\n'){ push('NEWLINE','\n'); line++; i++; continue; }
+    if (c === ' ' || c === '\t' || c === '\r'){ i++; continue; }
+    if (c === '#'){ while (i < src.length && src[i] !== '\n') i++; continue; }
+    if (c === '"'){
+      let s=''; i++;
+      while (i < src.length && src[i] !== '"'){
+        if (src[i] === '\\'){ const n = src[i+1]; s += (n==='n')?'\n':(n==='t')?'\t':n; i+=2; }
+        else { s += src[i]; i++; }
+      }
+      i++; push('STRING', s); continue;
+    }
+    if (/[0-9]/.test(c)){
+      let s='';
+      while (i < src.length && /[0-9.]/.test(src[i])){ s += src[i]; i++; }
+      push('NUMBER', parseFloat(s)); continue;
+    }
+    if (/[A-Za-z_]/.test(c)){
+      let s='';
+      while (i < src.length && /[A-Za-z0-9_]/.test(src[i])){ s += src[i]; i++; }
+      push(KEYWORDS.has(s) ? s : 'IDENT', s); continue;
+    }
+    const two = src.slice(i,i+2);
+    if (['==','!=','<=','>=','+='].includes(two)){ push(two, two); i+=2; continue; }
+    if ('+-*/%=<>(){}[],;.:'.includes(c)){ push(c, c); i++; continue; }
+    throw new SproutError(`I don't recognize the character "${c}"`, line);
+  }
+  push('EOF', null);
+  return tokens;
+}
+
+// ---------------- PARSER ----------------
+function parse(tokens){
+  let pos = 0;
+  const peek = () => tokens[pos];
+  const at = (t) => peek().type === t;
+  const advance = () => tokens[pos++];
+  const expect = (t) => { if (!at(t)) throw new SproutError(`expected "${t}" but found "${peek().type}"`, peek().line); return advance(); };
+  const skipNL = () => { while (at('NEWLINE') || at(';')) advance(); };
+
+  function parseProgram(){
+    const stmts = [];
+    skipNL();
+    while (!at('EOF')){ stmts.push(parseStatement()); skipNL(); }
+    return { type:'Program', body: stmts };
+  }
+
+  function parseBlock(){
+    expect('{'); skipNL();
+    const stmts = [];
+    while (!at('}')){ stmts.push(parseStatement()); skipNL(); }
+    expect('}');
+    return stmts;
+  }
+
+  function parseStatement(){
+    if (at('let')) return parseLet();
+    if (at('print')) return parsePrint();
+    if (at('if')) return parseIf();
+    if (at('while')) return parseWhile();
+    if (at('for')) return parseFor();
+    if (at('fn')) return parseFn();
+    if (at('sprite')) return parseSpriteDecl();
+    if (at('scene')) return parseSceneDecl();
+    if (at('on')) return parseOnHandler();
+    if (at('update')) return parseUpdateBlock();
+    if (at('return')){ advance();
+      const val = (at('NEWLINE')||at(';')||at('}')||at('EOF')) ? null : parseExpr();
+      return { type:'Return', value: val };
+    }
+    if (at('break')){ advance(); return { type:'Break' }; }
+    return parseExprOrAssign();
+  }
+
+  function parseLet(){
+    advance();
+    const name = expect('IDENT').value;
+    expect('=');
+    const value = parseExpr();
+    return { type:'Let', name, value };
+  }
+
+  function parsePrint(){ advance(); return { type:'Print', value: parseExpr() }; }
+
+  function parseIf(){
+    advance();
+    const cond = parseExpr();
+    const then = parseBlock();
+    let elze = null;
+    peekElse();
+    if (at('else')){ advance(); elze = at('if') ? [parseIf()] : parseBlock(); }
+    return { type:'If', cond, then, elze };
+  }
+  function peekElse(){
+    let save = pos;
+    while (tokens[pos].type === 'NEWLINE') pos++;
+    if (tokens[pos].type !== 'else') pos = save;
+  }
+
+  function parseWhile(){ advance(); const cond = parseExpr(); const body = parseBlock(); return { type:'While', cond, body }; }
+
+  function parseFor(){
+    advance();
+    const name = expect('IDENT').value;
+    expect('in');
+    const iter = parseExpr();
+    const body = parseBlock();
+    return { type:'For', name, iter, body };
+  }
+
+  function parseFn(){
+    advance();
+    const name = expect('IDENT').value;
+    expect('(');
+    const params = [];
+    if (!at(')')){
+      params.push(expect('IDENT').value);
+      while (at(',')){ advance(); params.push(expect('IDENT').value); }
+    }
+    expect(')');
+    const body = parseBlock();
+    return { type:'FnDecl', name, params, body };
+  }
+
+  function parseSpriteDecl(){
+    advance();
+    const name = expect('IDENT').value;
+    expect('{'); skipNL();
+    const props = [];
+    while (!at('}')){
+      const key = expect('IDENT').value;
+      expect(':');
+      const value = parseExpr();
+      props.push({ key, value });
+      skipNL();
+      if (at(',')){ advance(); skipNL(); }
+    }
+    expect('}');
+    return { type:'SpriteDecl', name, props };
+  }
+
+  function parseSceneDecl(){
+    advance();
+    const name = expect('IDENT').value;
+    const body = parseBlock();
+    return { type:'SceneDecl', name, body };
+  }
+
+  function parseOnHandler(){
+    advance();
+    const kind = expect('IDENT').value; // key | collide | start | click
+    let arg1 = null, arg2 = null;
+    if (kind === 'key' || kind === 'click'){
+      arg1 = parseExpr();
+    } else if (kind === 'collide'){
+      arg1 = expect('IDENT').value;
+      expect(',');
+      arg2 = expect('IDENT').value;
+    }
+    const body = parseBlock();
+    return { type:'OnHandler', kind, arg1, arg2, body };
+  }
+
+  function parseUpdateBlock(){
+    advance();
+    const body = parseBlock();
+    return { type:'UpdateBlock', body };
+  }
+
+  function parseExprOrAssign(){
+    const expr = parseExpr();
+    if (at('=')){
+      advance();
+      const value = parseExpr();
+      if (expr.type === 'Ident') return { type:'Assign', name: expr.name, value };
+      if (expr.type === 'Member') return { type:'MemberAssign', target: expr.target, prop: expr.prop, value };
+      if (expr.type === 'Index') return { type:'IndexAssign', target: expr.target, index: expr.index, value };
+      throw new SproutError('left side of "=" must be a variable, property, or index', peek().line);
+    }
+    if (at('+=')){
+      advance();
+      const value = parseExpr();
+      if (expr.type === 'Ident') return { type:'Assign', name: expr.name, value: { type:'Bin', op:'+', left: expr, right: value } };
+      if (expr.type === 'Member') return { type:'MemberAssign', target: expr.target, prop: expr.prop, value: { type:'Bin', op:'+', left: expr, right: value } };
+      throw new SproutError('left side of "+=" must be a variable or property', peek().line);
+    }
+    return { type:'ExprStmt', expr };
+  }
+
+  function parseExpr(){ return parseOr(); }
+  function parseOr(){ let l = parseAnd(); while (at('or')){ advance(); l = { type:'Logic', op:'or', left:l, right: parseAnd() }; } return l; }
+  function parseAnd(){ let l = parseNot(); while (at('and')){ advance(); l = { type:'Logic', op:'and', left:l, right: parseNot() }; } return l; }
+  function parseNot(){ if (at('not')){ advance(); return { type:'Not', value: parseNot() }; } return parseEquality(); }
+  function parseEquality(){ let l = parseComparison(); while (at('==')||at('!=')){ const op=advance().type; l={type:'Bin',op,left:l,right:parseComparison()}; } return l; }
+  function parseComparison(){ let l = parseTerm(); while (['<','>','<=','>='].includes(peek().type)){ const op=advance().type; l={type:'Bin',op,left:l,right:parseTerm()}; } return l; }
+  function parseTerm(){ let l = parseFactor(); while (at('+')||at('-')){ const op=advance().type; l={type:'Bin',op,left:l,right:parseFactor()}; } return l; }
+  function parseFactor(){ let l = parseUnary(); while (at('*')||at('/')||at('%')){ const op=advance().type; l={type:'Bin',op,left:l,right:parseUnary()}; } return l; }
+  function parseUnary(){ if (at('-')){ advance(); return { type:'Neg', value: parseUnary() }; } return parsePostfix(); }
+  function parsePostfix(){
+    let expr = parsePrimary();
+    while (true){
+      if (at('(')){
+        advance();
+        const args = [];
+        if (!at(')')){ args.push(parseExpr()); while (at(',')){ advance(); args.push(parseExpr()); } }
+        expect(')');
+        expr = { type:'Call', callee: expr, args };
+      } else if (at('[')){
+        advance(); const index = parseExpr(); expect(']');
+        expr = { type:'Index', target: expr, index };
+      } else if (at('.')){
+        advance(); const prop = expect('IDENT').value;
+        expr = { type:'Member', target: expr, prop };
+      } else break;
+    }
+    return expr;
+  }
+  function parsePrimary(){
+    const t = peek();
+    if (at('NUMBER')){ advance(); return { type:'Num', value: t.value }; }
+    if (at('STRING')){ advance(); return { type:'Str', value: t.value }; }
+    if (at('true')){ advance(); return { type:'Bool', value: true }; }
+    if (at('false')){ advance(); return { type:'Bool', value: false }; }
+    if (at('vec')){
+      advance(); expect('(');
+      const x = parseExpr(); expect(',');
+      const y = parseExpr(); expect(')');
+      return { type:'Vec', x, y };
+    }
+    if (at('IDENT')){ advance(); return { type:'Ident', name: t.value }; }
+    if (at('(')){ advance(); const e = parseExpr(); expect(')'); return e; }
+    if (at('[')){
+      advance();
+      const items = [];
+      if (!at(']')){ items.push(parseExpr()); while (at(',')){ advance(); items.push(parseExpr()); } }
+      expect(']');
+      return { type:'List', items };
+    }
+    throw new SproutError(`didn't expect "${t.value ?? t.type}" here`, t.line);
+  }
+
+  return parseProgram();
+}
+
+// ---------------- RUNTIME VALUES ----------------
+class Environment {
+  constructor(parent=null){ this.vars = new Map(); this.parent = parent; }
+  get(name){
+    if (this.vars.has(name)) return this.vars.get(name);
+    if (this.parent) return this.parent.get(name);
+    throw new SproutError(`"${name}" isn't defined yet — did you forget a "let"?`);
+  }
+  set(name, value){
+    let env = this;
+    while (env){ if (env.vars.has(name)){ env.vars.set(name, value); return; } env = env.parent; }
+    throw new SproutError(`"${name}" isn't defined yet — did you forget a "let"?`);
+  }
+  define(name, value){ this.vars.set(name, value); }
+}
+class ReturnSignal { constructor(value){ this.value = value; } }
+class BreakSignal {}
+
+function sproutStr(v){
+  if (v === null || v === undefined) return 'nothing';
+  if (Array.isArray(v)) return '[' + v.map(sproutStr).join(', ') + ']';
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  if (v && v.isVec) return `vec(${v.x}, ${v.y})`;
+  if (v && v.isSprite) return `<sprite ${v.name}>`;
+  if (typeof v === 'function' || (v && v.isFn)) return '<function>';
+  if (v && typeof v === 'object') return '<object>';
+  return String(v);
+}
+function truthy(v){
+  if (v === null || v === undefined) return false;
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'number') return v !== 0;
+  if (typeof v === 'string') return v.length > 0;
+  if (Array.isArray(v)) return v.length > 0;
+  return true;
+}
+
+// ---------------- INTERPRETER ----------------
+function makeInterpreter(host){
+  const global = new Environment();
+
+  global.define('len', { isFn:true, native:(a)=>{ const v=a[0]; if (typeof v==='string'||Array.isArray(v)) return v.length; throw new SproutError('len() needs a list or a string'); } });
+  global.define('range', { isFn:true, native:(a)=>{ let start=0,end; if(a.length===1) end=a[0]; else {start=a[0]; end=a[1];} const out=[]; for(let n=start;n<end;n++) out.push(n); return out; } });
+  global.define('str', { isFn:true, native:(a)=> sproutStr(a[0]) });
+  global.define('num', { isFn:true, native:(a)=>{ const n=parseFloat(a[0]); if (Number.isNaN(n)) throw new SproutError(`can't turn "${a[0]}" into a number`); return n; } });
+  global.define('abs', { isFn:true, native:(a)=> Math.abs(a[0]) });
+  global.define('min', { isFn:true, native:(a)=> Math.min(...a) });
+  global.define('max', { isFn:true, native:(a)=> Math.max(...a) });
+  global.define('floor', { isFn:true, native:(a)=> Math.floor(a[0]) });
+  global.define('random', { isFn:true, native:(a)=> a.length===2 ? (a[0] + Math.random()*(a[1]-a[0])) : Math.random() });
+  global.define('sqrt', { isFn:true, native:(a)=> Math.sqrt(a[0]) });
+
+  for (const [name, fn] of Object.entries(host.builtins)){
+    global.define(name, { isFn:true, native: fn });
+  }
+
+  function vec(x,y){ return { isVec:true, x, y }; }
+
+  function execBlock(stmts, env){ for (const s of stmts) exec(s, env); }
+
+  function exec(node, env){
+    switch(node.type){
+      case 'Let': env.define(node.name, evaluate(node.value, env)); return;
+      case 'Assign': env.set(node.name, evaluate(node.value, env)); return;
+      case 'MemberAssign': {
+        const t = evaluate(node.target, env);
+        if (t && t.isSprite) host.setSpriteProp(t, node.prop, evaluate(node.value, env));
+        else if (t && t.isVec) t[node.prop] = evaluate(node.value, env);
+        else throw new SproutError(`can't set ".${node.prop}" on that value`);
+        return;
+      }
+      case 'IndexAssign': {
+        const t = evaluate(node.target, env);
+        const idx = evaluate(node.index, env);
+        if (!Array.isArray(t)) throw new SproutError('only lists can be index-assigned');
+        t[idx] = evaluate(node.value, env);
+        return;
+      }
+      case 'Print': host.print(sproutStr(evaluate(node.value, env))); return;
+      case 'ExprStmt': evaluate(node.expr, env); return;
+      case 'If':
+        if (truthy(evaluate(node.cond, env))) execBlock(node.then, new Environment(env));
+        else if (node.elze) execBlock(node.elze, new Environment(env));
+        return;
+      case 'While':
+        while (truthy(evaluate(node.cond, env))){
+          try { execBlock(node.body, new Environment(env)); } catch(e){ if (e instanceof BreakSignal) break; throw e; }
+        }
+        return;
+      case 'For': {
+        const iter = evaluate(node.iter, env);
+        if (!Array.isArray(iter) && typeof iter !== 'string') throw new SproutError('"for ... in" needs a list or a string');
+        for (const item of iter){
+          const loopEnv = new Environment(env);
+          loopEnv.define(node.name, item);
+          try { execBlock(node.body, loopEnv); } catch(e){ if (e instanceof BreakSignal) break; throw e; }
+        }
+        return;
+      }
+      case 'FnDecl': env.define(node.name, { isFn:true, params: node.params, body: node.body, closure: env }); return;
+      case 'Return': throw new ReturnSignal(node.value ? evaluate(node.value, env) : null);
+      case 'Break': throw new BreakSignal();
+      case 'SpriteDecl': {
+        const props = {};
+        for (const p of node.props) props[p.key] = evaluate(p.value, env);
+        const spriteObj = host.registerSprite(node.name, props);
+        env.define(node.name, spriteObj);
+        global.define(node.name, spriteObj);
+        return;
+      }
+      case 'SceneDecl': {
+        host.registerScene(node.name, () => execBlock(node.body, new Environment(env)));
+        return;
+      }
+      case 'OnHandler': {
+        const a1 = node.arg1 !== null && typeof node.arg1 === 'object' ? evaluate(node.arg1, env) : node.arg1;
+        const a2 = node.arg2;
+        host.registerHandler(node.kind, a1, a2, (bindings) => {
+          const handlerEnv = new Environment(env);
+          if (bindings) for (const [k,v] of Object.entries(bindings)) handlerEnv.define(k, v);
+          execBlock(node.body, handlerEnv);
+        });
+        return;
+      }
+      case 'UpdateBlock': {
+        host.registerUpdate((dt) => {
+          const updateEnv = new Environment(env);
+          updateEnv.define('dt', dt);
+          execBlock(node.body, updateEnv);
+        });
+        return;
+      }
+      default: throw new SproutError(`internal: unknown statement "${node.type}"`);
+    }
+  }
+
+  function callFn(fn, args){
+    if (fn.native) return fn.native(args);
+    const local = new Environment(fn.closure);
+    fn.params.forEach((p, idx) => local.define(p, args[idx] !== undefined ? args[idx] : null));
+    try { execBlock(fn.body, local); } catch(e){ if (e instanceof ReturnSignal) return e.value; throw e; }
+    return null;
+  }
+
+  function evaluate(node, env){
+    switch(node.type){
+      case 'Num': return node.value;
+      case 'Str': return node.value;
+      case 'Bool': return node.value;
+      case 'Vec': return vec(evaluate(node.x, env), evaluate(node.y, env));
+      case 'Ident': return env.get(node.name);
+      case 'List': return node.items.map(i => evaluate(i, env));
+      case 'Neg': return -evaluate(node.value, env);
+      case 'Not': return !truthy(evaluate(node.value, env));
+      case 'Logic': { const l = evaluate(node.left, env); if (node.op==='and') return truthy(l)?evaluate(node.right,env):l; return truthy(l)?l:evaluate(node.right,env); }
+      case 'Bin': {
+        const l = evaluate(node.left, env), r = evaluate(node.right, env);
+        if (l && l.isVec && r && r.isVec){
+          switch(node.op){ case '+': return vec(l.x+r.x, l.y+r.y); case '-': return vec(l.x-r.x, l.y-r.y); }
+        }
+        if (l && l.isVec && typeof r === 'number'){
+          switch(node.op){ case '*': return vec(l.x*r, l.y*r); case '/': return vec(l.x/r, l.y/r); }
+        }
+        switch(node.op){
+          case '+':
+            if (typeof l === 'string' || typeof r === 'string') return sproutStr(l) + sproutStr(r);
+            if (Array.isArray(l) && Array.isArray(r)) return l.concat(r);
+            return l + r;
+          case '-': return l - r;
+          case '*': return l * r;
+          case '/': if (r === 0) throw new SproutError("can't divide by zero"); return l / r;
+          case '%': return l % r;
+          case '==': return sproutStr(l) === sproutStr(r) && typeof l === typeof r;
+          case '!=': return !(sproutStr(l) === sproutStr(r) && typeof l === typeof r);
+          case '<': return l < r;
+          case '>': return l > r;
+          case '<=': return l <= r;
+          case '>=': return l >= r;
+        }
+      }
+      case 'Index': {
+        const t = evaluate(node.target, env);
+        const idx = evaluate(node.index, env);
+        if (!Array.isArray(t) && typeof t !== 'string') throw new SproutError('only lists and strings can be indexed');
+        if (idx < 0 || idx >= t.length) throw new SproutError(`index ${idx} is out of range (length ${t.length})`);
+        return t[idx];
+      }
+      case 'Member': {
+        const t = evaluate(node.target, env);
+        if (t && t.isSprite) return host.getSpriteProp(t, node.prop);
+        if (t && t.isVec) return t[node.prop];
+        throw new SproutError(`"${node.prop}" isn't a property of that value`);
+      }
+      case 'Call': {
+        const fn = evaluate(node.callee, env);
+        const args = node.args.map(a => evaluate(a, env));
+        if (!fn || !fn.isFn) throw new SproutError(`"${node.callee.name ?? '?'}" isn't a function`);
+        return callFn(fn, args);
+      }
+      default: throw new SproutError(`internal: unknown expression "${node.type}"`);
+    }
+  }
+
+  return {
+    runProgram(ast){ execBlock(ast.body, global); },
+    env: global
+  };
+}
+
+function sproutRun(src, host){
+  const tokens = lex(src);
+  const ast = parse(tokens);
+  const interp = makeInterpreter(host);
+  interp.runProgram(ast);
+  return interp;
+}
+
+window.Sprout2D = { lex, parse, sproutRun, SproutError, KEYWORDS };
+</script>
+<script>
+/* ============================================================
+   SPROUT2D — game runtime
+   Wires the language interpreter (lang.js) to an HTML5 canvas:
+   sprite storage/rendering, image loading (URL or uploaded file),
+   collision detection, keyboard/click input, and the game loop.
+   ============================================================ */
+
+function createSprout2DRuntime(canvas, opts={}){
+  const ctx = canvas.getContext('2d');
+  const onPrint = opts.onPrint || (()=>{});
+  const onError = opts.onError || (()=>{});
+
+  let sprites = new Map();
+  let scenes = new Map();
+  let keyHandlers = [];
+  let clickHandlers = [];
+  let collideHandlers = [];
+  let startHandlers = [];
+  let updateFns = [];
+  let heldKeys = new Set();
+  let running = false;
+  let rafId = null;
+  let lastTime = 0;
+  let imageCache = new Map();
+  let pendingTaps = [];   // taps/clicks queued since the last frame, in canvas coordinates
+  let frameTaps = [];     // taps/clicks that landed on this specific frame — what tapped()/clicked() checks against
+  let manualClearedThisFrame = false; // true once clear()/draw_text() are used manually during update(), so the
+                                       // automatic per-frame background wipe doesn't erase what was just drawn
+
+  canvas.style.touchAction = 'none'; // stop the page from scrolling/zooming while playing
+
+  function reset(){
+    sprites = new Map();
+    scenes = new Map();
+    keyHandlers = [];
+    clickHandlers = [];
+    collideHandlers = [];
+    startHandlers = [];
+    updateFns = [];
+    heldKeys = new Set();
+    pendingTaps = [];
+    frameTaps = [];
+    manualClearedThisFrame = false;
+    stop();
+  }
+
+  function loadImage(src){
+    if (imageCache.has(src)) return imageCache.get(src);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = src;
+    imageCache.set(src, img);
+    return img;
+  }
+
+  function registerUploadedImage(name, dataUrl){
+    const img = new Image();
+    img.src = dataUrl;
+    imageCache.set(name, img);
+  }
+
+  const host = {
+    print: onPrint,
+
+    builtins: {
+      key_down: (args) => heldKeys.has(args[0]),
+      // true on the one frame a sprite was clicked (mouse) or tapped (touch) —
+      // works the same on desktop and Android/mobile since both feed the same tap queue
+      clicked: (args) => {
+        const s = args[0];
+        if (!s || !s.isSprite) return false;
+        return frameTaps.some(p => p.x >= s.x && p.x <= s.x + s.w && p.y >= s.y && p.y <= s.y + s.h);
+      },
+      clear: (args) => { manualClearedThisFrame = true; ctx.fillStyle = args[0] || '#111318'; ctx.fillRect(0,0,canvas.width,canvas.height); return null; },
+      width: () => canvas.width,
+      height: () => canvas.height,
+      goto_scene: (args) => { setScene(args[0]); return null; },
+      destroy: (args) => { const s = args[0]; if (s && s.isSprite) sprites.delete(s.name); return null; },
+      distance: (args) => { const a=args[0], b=args[1]; return Math.hypot(a.x-b.x, a.y-b.y); },
+      draw_text: (args) => {
+        const [text, x, y, color, size] = args;
+        ctx.fillStyle = color || '#efe7d6';
+        ctx.font = `${size||16}px 'IBM Plex Mono', monospace`;
+        ctx.fillText(text, x, y);
+        return null;
+      }
+    },
+
+    registerSprite(name, props){
+      const sprite = {
+        isSprite: true,
+        name,
+        x: props.x ?? 0,
+        y: props.y ?? 0,
+        w: props.w ?? 32,
+        h: props.h ?? 32,
+        color: props.color ?? '#8bc53f',
+        shape: props.shape ?? 'rect',
+        image: props.image ?? null,
+        vx: props.vx ?? 0,
+        vy: props.vy ?? 0,
+        visible: props.visible ?? true,
+        rotation: props.rotation ?? 0,
+      };
+      sprites.set(name, sprite);
+      return sprite;
+    },
+    getSpriteProp(sprite, prop){ return sprite[prop]; },
+    setSpriteProp(sprite, prop, value){ sprite[prop] = value; },
+    registerScene(name, setupFn){ scenes.set(name, setupFn); },
+    registerHandler(kind, arg1, arg2, fn){
+      if (kind === 'key') keyHandlers.push({ key: arg1, fn });
+      else if (kind === 'click') clickHandlers.push({ fn });
+      else if (kind === 'collide') collideHandlers.push({ a: arg1, b: arg2, fn });
+      else if (kind === 'start') startHandlers.push({ fn });
+    },
+    registerUpdate(fn){ updateFns.push(fn); }
+  };
+
+  function setScene(name){
+    const setup = scenes.get(name);
+    if (!setup) { onError(new Error(`no scene named "${name}"`)); return; }
+    setup();
+  }
+
+  function rectsOverlap(a, b){
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function drawSprite(s){
+    if (!s.visible) return;
+    ctx.save();
+    ctx.translate(s.x + s.w/2, s.y + s.h/2);
+    if (s.rotation) ctx.rotate(s.rotation * Math.PI/180);
+    if (s.image){
+      const img = loadImage(s.image);
+      if (img.complete && img.naturalWidth > 0){
+        ctx.drawImage(img, -s.w/2, -s.h/2, s.w, s.h);
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillRect(-s.w/2, -s.h/2, s.w, s.h);
+      }
+    } else if (s.shape === 'circle'){
+      ctx.fillStyle = s.color;
+      ctx.beginPath();
+      ctx.arc(0, 0, s.w/2, 0, Math.PI*2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = s.color;
+      ctx.fillRect(-s.w/2, -s.h/2, s.w, s.h);
+    }
+    ctx.restore();
+  }
+
+  function frame(t){
+    if (!running) return;
+    const dt = lastTime ? Math.min((t - lastTime)/1000, 0.05) : 0;
+    lastTime = t;
+
+    frameTaps = pendingTaps;
+    pendingTaps = [];
+    manualClearedThisFrame = false;
+
+    try {
+      for (const u of updateFns) u(dt);
+
+      for (const c of collideHandlers){
+        const a = sprites.get(c.a), b = sprites.get(c.b);
+        if (a && b && rectsOverlap(a,b)) c.fn({ [c.a]: a, [c.b]: b });
+      }
+
+      // if the script already cleared the canvas itself (e.g. to draw custom
+      // text/shapes), don't wipe that work — just layer sprites on top of it
+      if (!manualClearedThisFrame){
+        ctx.fillStyle = '#14161d';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+      }
+      for (const s of sprites.values()) drawSprite(s);
+    } catch(e){
+      onError(e);
+      stop();
+      return;
+    }
+    rafId = requestAnimationFrame(frame);
+  }
+
+  function start(){
+    if (running) return;
+    running = true;
+    lastTime = 0;
+    for (const h of startHandlers) h.fn();
+    rafId = requestAnimationFrame(frame);
+  }
+  function stop(){
+    running = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+
+  function onKeyDown(e){
+    heldKeys.add(e.key);
+    for (const h of keyHandlers) if (h.key === e.key) {
+      try { h.fn(); } catch(err){ onError(err); stop(); }
+    }
+  }
+  function onKeyUp(e){ heldKeys.delete(e.key); }
+
+  // converts a raw pointer/touch position to canvas-internal coordinates,
+  // correcting for the canvas being scaled down by CSS on small screens
+  function canvasPoint(clientX, clientY){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+  }
+
+  function registerTap(x, y){
+    pendingTaps.push({ x, y });
+    for (const h of clickHandlers) {
+      try { h.fn({ x: () => x, y: () => y }); } catch(err){ onError(err); stop(); }
+    }
+  }
+
+  function onMouseDown(e){
+    const p = canvasPoint(e.clientX, e.clientY);
+    registerTap(p.x, p.y);
+  }
+  function onTouchStart(e){
+    e.preventDefault(); // stop the synthetic mouse "click" that would otherwise double-fire
+    for (const touch of e.changedTouches){
+      const p = canvasPoint(touch.clientX, touch.clientY);
+      registerTap(p.x, p.y);
+    }
+  }
+
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  canvas.addEventListener('mousedown', onMouseDown);
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+
+  function runSource(src){
+    reset();
+    try {
+      window.Sprout2D.sproutRun(src, host);
+      ctx.fillStyle = '#14161d';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      for (const s of sprites.values()) drawSprite(s);
+      start();
+    } catch(e){
+      onError(e);
+    }
+  }
+
+  function destroy(){
+    stop();
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keyup', onKeyUp);
+    canvas.removeEventListener('mousedown', onMouseDown);
+    canvas.removeEventListener('touchstart', onTouchStart);
+  }
+
+  return { runSource, stop, start, registerUploadedImage, destroy };
+}
+
+window.createSprout2DRuntime = createSprout2DRuntime;
+</script>
+<script>
+/* ============================================================
+   CodeMirror 5 setup + custom Sprout2D mode
+   ============================================================ */
+let editor = null;
+let runtime = null;
+
+const canvas = document.getElementById('game-canvas');
+const consoleOut = document.getElementById('console-out');
+const runBtn = document.getElementById('run-btn');
+const stopBtn = document.getElementById('stop-btn');
+const assetListEl = document.getElementById('asset-list');
+const uploadedAssets = {};
+
+function logLine(text, cls){
+  const div = document.createElement('div');
+  if (cls) div.className = cls;
+  div.textContent = text;
+  consoleOut.appendChild(div);
+  consoleOut.scrollTop = consoleOut.scrollHeight;
+}
+function clearConsole(){ consoleOut.innerHTML = ''; }
+
+function initRuntime(){
+  runtime = createSprout2DRuntime(canvas, {
+    onPrint: (s) => logLine(s),
+    onError: (e) => {
+      const where = e.sproutLine ? ` (line ${e.sproutLine})` : '';
+      logLine(`✕ ${e.message}${where}`, 'err');
+      stopBtn.style.display = 'none';
+      runBtn.style.display = 'inline-flex';
+    }
+  });
+  for (const [name, dataUrl] of Object.entries(uploadedAssets)) runtime.registerUploadedImage(name, dataUrl);
+}
+
+function doRun(){
+  clearConsole();
+  initRuntime();
+  runtime.runSource(editor.getValue());
+  runBtn.style.display = 'none';
+  stopBtn.style.display = 'inline-flex';
+  switchTab('game'); // jump straight to the result, especially handy on small/mobile screens
+}
+function doStop(){
+  if (runtime) runtime.stop();
+  stopBtn.style.display = 'none';
+  runBtn.style.display = 'inline-flex';
+  logLine('— stopped —', 'hint');
+}
+runBtn.addEventListener('click', doRun);
+stopBtn.addEventListener('click', doStop);
+
+document.getElementById('image-upload').addEventListener('change', (e) => {
+  for (const file of e.target.files){
+    const reader = new FileReader();
+    reader.onload = () => {
+      uploadedAssets[file.name] = reader.result;
+      if (runtime) runtime.registerUploadedImage(file.name, reader.result);
+      renderAssetList();
+    };
+    reader.readAsDataURL(file);
+  }
+});
+function renderAssetList(){
+  assetListEl.innerHTML = '';
+  for (const name of Object.keys(uploadedAssets)){
+    const span = document.createElement('span');
+    span.textContent = name;
+    assetListEl.appendChild(span);
+  }
+}
+
+const EXAMPLES = {
+  mover: `# a square that drifts across the screen
+sprite Box {
+  x: 20, y: 150, w: 40, h: 40, color: "#8bc53f"
+}
+
+update {
+  Box.x = Box.x + 60 * dt
+  if Box.x > width() {
+    Box.x = -40
+  }
+}`,
+
+  input: `# move a square with the arrow keys
+sprite Player {
+  x: 220, y: 160, w: 32, h: 32, color: "white", shape: "circle"
+}
+
+let speed = 160
+
+update {
+  if key_down("ArrowRight") { Player.x = Player.x + speed * dt }
+  if key_down("ArrowLeft")  { Player.x = Player.x - speed * dt }
+  if key_down("ArrowUp")    { Player.y = Player.y - speed * dt }
+  if key_down("ArrowDown")  { Player.y = Player.y + speed * dt }
+}`,
+
+  bounce: `# a ball that bounces off the walls
+sprite Ball {
+  x: 200, y: 100, w: 24, h: 24, color: "#cf7f4c", shape: "circle"
+}
+
+let vx = 140
+let vy = 90
+
+update {
+  Ball.x = Ball.x + vx * dt
+  Ball.y = Ball.y + vy * dt
+
+  if Ball.x < 0 or Ball.x + Ball.w > width() {
+    vx = vx * -1
+  }
+  if Ball.y < 0 or Ball.y + Ball.h > height() {
+    vy = vy * -1
+  }
+}`,
+
+  collect: `# move to the coin to collect it — score prints to the console
+sprite Player { x: 20, y: 20, w: 28, h: 28, color: "white" }
+sprite Coin   { x: 300, y: 200, w: 18, h: 18, color: "gold", shape: "circle" }
+
+let score = 0
+let speed = 160
+
+update {
+  if key_down("ArrowRight") { Player.x = Player.x + speed * dt }
+  if key_down("ArrowLeft")  { Player.x = Player.x - speed * dt }
+  if key_down("ArrowUp")    { Player.y = Player.y - speed * dt }
+  if key_down("ArrowDown")  { Player.y = Player.y + speed * dt }
+}
+
+on collide Player, Coin {
+  score = score + 1
+  print "score: " + str(score)
+  Coin.x = random(0, width() - 20)
+  Coin.y = random(0, height() - 20)
+}`,
+
+  tap: `# tap/click targets — works with mouse AND touch (Android, iOS, tablets)
+sprite Target {
+  x: 200, y: 150, w: 60, h: 60, color: "#8bc53f", shape: "circle"
+}
+
+let score = 0
+
+update {
+  if clicked(Target) {
+    score = score + 1
+    print "tapped! score: " + str(score)
+    Target.x = random(0, width() - Target.w)
+    Target.y = random(0, height() - Target.h)
+  }
+}`,
+
+  dodger: `# DODGER — dodge the falling blocks, survive as long as you can
+sprite Player { x: 220, y: 320, w: 30, h: 30, color: "#c3e894" }
+
+let speed = 220
+let spawn_timer = 0
+let survived = 0
+let game_over = false
+let falling = []
+
+fn spawn_block() {
+  let b = vec(random(0, width() - 20), -20)
+  falling = falling + [b]
+}
+
+update {
+  if game_over {
+    return
+  }
+
+  survived = survived + dt
+
+  if key_down("ArrowRight") { Player.x = Player.x + speed * dt }
+  if key_down("ArrowLeft")  { Player.x = Player.x - speed * dt }
+  if Player.x < 0 { Player.x = 0 }
+  if Player.x > width() - Player.w { Player.x = width() - Player.w }
+
+  spawn_timer = spawn_timer + dt
+  if spawn_timer > 0.5 {
+    spawn_timer = 0
+    spawn_block()
+  }
+
+  let i = 0
+  while i < len(falling) {
+    falling[i].y = falling[i].y + 180 * dt
+    i = i + 1
+  }
+
+  clear("#14161d")
+  draw_text("time: " + str(floor(survived)), 12, 20, "#c3e894", 14)
+
+  for b in falling {
+    draw_text("■", b.x, b.y, "#cf7f4c", 20)
+    if b.x < Player.x + Player.w and b.x + 16 > Player.x and b.y < Player.y + Player.h and b.y + 16 > Player.y {
+      game_over = true
+      draw_text("game over — survived " + str(floor(survived)) + "s", 90, 180, "#e0765a", 16)
+    }
+  }
+}`
+};
+
+// ---------------- Sprout2D mode for CodeMirror 5 ----------------
+const S2D_KEYWORDS = ['let','fn','if','else','while','for','in','return','true','false','and','or','not','print','break','sprite','scene','on','update','vec'];
+const S2D_BUILTINS = ['key_down','clicked','clear','width','height','goto_scene','destroy','distance','draw_text','len','range','str','num','abs','min','max','floor','random','sqrt'];
+
+CodeMirror.defineSimpleMode('sprout2d', {
+  start: [
+    { regex: /#.*/, token: 'comment' },
+    { regex: /"(?:[^"\\]|\\.)*"/, token: 'string' },
+    { regex: /\b\d+(\.\d+)?\b/, token: 'number' },
+    { regex: new RegExp('\\b(?:' + S2D_KEYWORDS.join('|') + ')\\b'), token: 'keyword' },
+    { regex: new RegExp('\\b(?:' + S2D_BUILTINS.join('|') + ')\\b(?=\\s*\\()'), token: 'builtin' },
+    { regex: /[A-Za-z_]\w*(?=\s*:)/, token: 'property' },
+    { regex: /[{[(]/, indent: true },
+    { regex: /[}\])]/, dedent: true },
+    { regex: /[A-Za-z_]\w*/, token: 'variable' },
+  ],
+  meta: { lineComment: '#' }
+});
+
+function s2dHint(cm){
+  const cursor = cm.getCursor();
+  const line = cm.getLine(cursor.line);
+  let start = cursor.ch, end = cursor.ch;
+  while (start > 0 && /\w/.test(line.charAt(start - 1))) start--;
+  while (end < line.length && /\w/.test(line.charAt(end))) end++;
+  const word = line.slice(start, end).toLowerCase();
+  const all = [...S2D_KEYWORDS, ...S2D_BUILTINS.map(b => b + '(')];
+  const list = word ? all.filter(w => w.toLowerCase().startsWith(word)) : all;
+  return {
+    list,
+    from: CodeMirror.Pos(cursor.line, start),
+    to: CodeMirror.Pos(cursor.line, end)
+  };
+}
+
+editor = CodeMirror.fromTextArea(document.getElementById('code-textarea'), {
+  value: EXAMPLES.mover,
+  mode: 'sprout2d',
+  theme: 'sprout',
+  lineNumbers: true,
+  indentUnit: 2,
+  tabSize: 2,
+  indentWithTabs: false,
+  matchBrackets: true,
+  autoCloseBrackets: true,
+  styleActiveLine: true,
+  extraKeys: {
+    'Ctrl-Enter': doRun,
+    'Cmd-Enter': doRun,
+    'Ctrl-Space': 'autocomplete',
+    'Tab': (cm) => cm.replaceSelection('  ', 'end'),
+  },
+  hintOptions: { hint: s2dHint, completeSingle: false }
+});
+editor.setValue(EXAMPLES.mover);
+
+editor.on('inputRead', (cm, change) => {
+  if (change.text[0] && /[a-zA-Z_]/.test(change.text[0])) cm.showHint({ hint: s2dHint, completeSingle: false });
+});
+
+document.getElementById('example-picker').addEventListener('change', (e) => {
+  const key = e.target.value;
+  if (!key || !editor) return;
+  editor.setValue(EXAMPLES[key]);
+  doRun();
+});
+
+doRun();
+/* ============================================================
+   Tutorial content + rendering
+   ============================================================ */
+const TUT_SNIPPETS = {
+  hello: `# your first sprout2d program
+print "hello, sprout2d!"
+
+let name = "world"
+print "hi, " + name`,
+
+  core_vars: `let score = 0
+let name = "Rin"
+let alive = true
+
+if score == 0 {
+  print name + " hasn't scored yet"
+}`,
+
+  core_loops: `for i in range(1, 6) {
+  print "tick " + str(i)
+}
+
+let n = 5
+while n > 0 {
+  print n
+  n = n - 1
+}`,
+
+  core_fn: `fn add(a, b) {
+  return a + b
+}
+
+print add(2, 3)
+
+let nums = [4, 8, 15, 16]
+print "total: " + str(len(nums))`,
+
+  sprite_basic: `sprite Hero {
+  x: 40, y: 40, w: 32, h: 32, color: "tomato"
+}
+
+sprite Ball {
+  x: 200, y: 100, w: 20, h: 20, color: "#c3e894", shape: "circle"
+}`,
+
+  sprite_props: `sprite Hero { x: 0, y: 0, w: 32, h: 32, color: "#8bc53f" }
+
+update {
+  Hero.x = Hero.x + 20 * dt
+  print str(Hero.x)
+}`,
+
+  images_basic: `# use an image you uploaded in the toolbar above —
+# the sprite's "image" is just the file name
+sprite Hero {
+  x: 40, y: 40, w: 48, h: 48, image: "hero.png"
+}
+
+# or load straight from a URL
+sprite Enemy {
+  x: 200, y: 40, w: 48, h: 48,
+  image: "https://example.com/enemy.png"
+}`,
+
+  movement_update: `sprite Box { x: 20, y: 150, w: 40, h: 40, color: "#8bc53f" }
+
+update {
+  Box.x = Box.x + 60 * dt
+  if Box.x > width() {
+    Box.x = -40
+  }
+}`,
+
+  movement_vec: `let velocity = vec(60, -20)
+let position = vec(0, 100)
+
+update {
+  position = position + velocity * dt
+  print str(position)
+}`,
+
+  input_key: `sprite Player { x: 220, y: 160, w: 32, h: 32, color: "#c3e894" }
+let speed = 160
+
+update {
+  if key_down("ArrowRight") { Player.x = Player.x + speed * dt }
+  if key_down("ArrowLeft")  { Player.x = Player.x - speed * dt }
+}`,
+
+  input_click: `on click "any" {
+  print "clicked!"
+}`,
+
+  input_tap: `# clicked() is true on the one frame a sprite is
+# clicked with a mouse OR tapped on a touchscreen —
+# no extra code needed for Android/mobile
+sprite Target { x: 200, y: 150, w: 60, h: 60, color: "#8bc53f", shape: "circle" }
+
+update {
+  if clicked(Target) {
+    print "tapped!"
+    Target.color = "#cf7f4c"
+  }
+}`,
+
+  input_keypress: `on key "Space" {
+  print "jump!"
+}`,
+
+  collide_basic: `sprite Player { x: 20, y: 20, w: 28, h: 28, color: "#c3e894" }
+sprite Coin   { x: 300, y: 200, w: 18, h: 18, color: "#e0c88f", shape: "circle" }
+
+on collide Player, Coin {
+  print "collected!"
+  Coin.x = random(0, width() - 20)
+}`,
+
+  scenes_basic: `scene Menu {
+  print "welcome — press any key to start"
+}
+
+scene Game {
+  print "playing!"
+}
+
+on key "Space" {
+  goto_scene("Game")
+}
+
+goto_scene("Menu")`,
+};
+
+const TUTORIAL = [
+  { group: 'Basics', id: 'intro', title: 'What is Sprout2D?', kicker: 'Lesson 1', html: `
+    <p>Sprout2D is a small programming language built for making 2D games. It has everything a general-purpose scripting language has — variables, loops, functions, lists — plus a handful of extra words that only make sense in a game: <code>sprite</code>, <code>scene</code>, <code>on</code>, and <code>update</code>.</p>
+    <p>Every Sprout2D program you write runs live right in your browser — write it in the Code tab, then check the Game tab to see it run. There's nothing to install. Try the snippet below.</p>
+    <h3>Your first program</h3>
+    <pre>${esc(TUT_SNIPPETS.hello)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="hello">▸ Try it in the editor</button>
+    <p>Notice there are no semicolons and no type declarations. A line ends when the line ends. Comments start with <code>#</code>.</p>
+  `},
+  { group: 'Basics', id: 'core', title: 'The core language', kicker: 'Lesson 2', html: `
+    <p>Before touching anything game-specific, it helps to know the language underneath. Sprout2D's core is deliberately small.</p>
+    <h3>Variables and conditionals</h3>
+    <pre>${esc(TUT_SNIPPETS.core_vars)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="core_vars">▸ Try it</button>
+    <h3>Loops</h3>
+    <pre>${esc(TUT_SNIPPETS.core_loops)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="core_loops">▸ Try it</button>
+    <h3>Functions and lists</h3>
+    <pre>${esc(TUT_SNIPPETS.core_fn)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="core_fn">▸ Try it</button>
+    <p>All the usual operators work as you'd expect: <code>+ - * / %</code>, comparisons <code>== != &lt; &gt; &lt;= &gt;=</code>, and <code>and</code>/<code>or</code>/<code>not</code> instead of symbols.</p>
+  `},
+  { group: 'Building games', id: 'sprites', title: 'Sprites', kicker: 'Lesson 3', html: `
+    <p>A <code>sprite</code> is a game object with a position and a look. Declaring one both creates it on screen and gives you a variable to control it by.</p>
+    <pre>${esc(TUT_SNIPPETS.sprite_basic)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="sprite_basic">▸ Try it</button>
+    <h3>Sprite properties</h3>
+    <table>
+      <tr><th>property</th><th>meaning</th></tr>
+      <tr><td><code>x</code>, <code>y</code></td><td>top-left position in pixels</td></tr>
+      <tr><td><code>w</code>, <code>h</code></td><td>width and height</td></tr>
+      <tr><td><code>color</code></td><td>fill color — a named CSS color like <code>"white"</code> or <code>"tomato"</code>, a hex code like <code>"#8bc53f"</code>, or <code>rgb(...)</code>/<code>hsl(...)</code>; used when there's no image</td></tr>
+      <tr><td><code>shape</code></td><td><code>"rect"</code> (default) or <code>"circle"</code></td></tr>
+      <tr><td><code>image</code></td><td>an uploaded file name or an image URL</td></tr>
+      <tr><td><code>rotation</code></td><td>degrees, clockwise</td></tr>
+      <tr><td><code>visible</code></td><td><code>true</code>/<code>false</code> — hide without destroying</td></tr>
+    </table>
+    <p>You read and change a sprite's properties with dot notation, same as any object:</p>
+    <pre>${esc(TUT_SNIPPETS.sprite_props)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="sprite_props">▸ Try it</button>
+  `},
+  { group: 'Building games', id: 'images', title: 'Images & sprite art', kicker: 'Lesson 4', html: `
+    <p>Colored rectangles are fine for prototyping, but real games use art. Sprout2D sprites can display an image two ways.</p>
+    <h3>1. Upload a file</h3>
+    <p>In the Code tab's toolbar, click <strong>⇪ upload image</strong> and pick a PNG or JPG. It's registered under its file name — reference that name in <code>image:</code>.</p>
+    <h3>2. Load from a URL</h3>
+    <p>Point <code>image:</code> straight at an image URL and it loads the same way.</p>
+    <pre>${esc(TUT_SNIPPETS.images_basic)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="images_basic">▸ Try it</button>
+    <p>While an image is loading (or if it fails), Sprout2D draws a faint placeholder box in its place so your layout doesn't jump around.</p>
+  `},
+  { group: 'Building games', id: 'movement', title: 'Movement & the update loop', kicker: 'Lesson 5', html: `
+    <p>An <code>update</code> block runs on every single frame — roughly 60 times a second. That's where movement, physics, and game logic live.</p>
+    <pre>${esc(TUT_SNIPPETS.movement_update)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="movement_update">▸ Try it</button>
+    <p><code>dt</code> ("delta time") is the number of seconds since the last frame — usually a tiny fraction. Multiplying a speed by <code>dt</code> is what makes movement smooth and consistent regardless of how fast the screen refreshes.</p>
+    <h3>Vectors</h3>
+    <p><code>vec(x, y)</code> bundles a pair of numbers — handy for position and velocity together. Vectors support <code>+</code>, <code>-</code>, and scaling by a number with <code>*</code>.</p>
+    <pre>${esc(TUT_SNIPPETS.movement_vec)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="movement_vec">▸ Try it</button>
+  `},
+  { group: 'Building games', id: 'input', title: 'Keyboard & mouse input', kicker: 'Lesson 6', html: `
+    <p>There are two styles of input in Sprout2D, and most games use both.</p>
+    <h3>Polling with key_down()</h3>
+    <p>Inside <code>update</code>, ask "is this key held right now?" — good for continuous movement.</p>
+    <pre>${esc(TUT_SNIPPETS.input_key)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="input_key">▸ Try it</button>
+    <h3>Reacting with on key / on click</h3>
+    <p>For one-shot actions — a jump, a menu click — use a handler instead. It fires once per press, not once per frame.</p>
+    <pre>${esc(TUT_SNIPPETS.input_keypress)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="input_keypress">▸ Try it</button>
+    <pre>${esc(TUT_SNIPPETS.input_click)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="input_click">▸ Try it</button>
+    <p>Key names match standard browser key names: <code>"ArrowUp"</code>, <code>"ArrowDown"</code>, <code>"ArrowLeft"</code>, <code>"ArrowRight"</code>, <code>"Space"</code>, <code>"a"</code>, and so on.</p>
+    <h3>Touch &amp; tapping a sprite (mobile-friendly)</h3>
+    <p>Keyboards don't exist on phones, so for anything meant to work on Android or iPhone, tap-to-interact is usually the right control scheme instead of arrow keys. <code>clicked(sprite)</code> is true for exactly one frame — the frame a sprite was clicked with a mouse <em>or</em> tapped on a touchscreen. There's nothing separate to write for touch; the same call handles both.</p>
+    <pre>${esc(TUT_SNIPPETS.input_tap)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="input_tap">▸ Try it</button>
+    <p>Open the <strong>05 — tap targets</strong> example from the dropdown to try it on an actual phone or tablet — the game canvas ignores page scrolling while you play, so taps land cleanly.</p>
+  `},
+  { group: 'Building games', id: 'collide', title: 'Collisions', kicker: 'Lesson 7', html: `
+    <p><code>on collide A, B</code> fires every frame that sprites <code>A</code> and <code>B</code> overlap. It's the fastest way to wire up pickups, damage, or triggers.</p>
+    <pre>${esc(TUT_SNIPPETS.collide_basic)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="collide_basic">▸ Try it</button>
+    <p>Collision is a simple rectangle overlap test using each sprite's <code>x, y, w, h</code> — it doesn't matter whether the sprite is drawn as a circle or an image, the hitbox is always the bounding box.</p>
+  `},
+  { group: 'Building games', id: 'scenes', title: 'Scenes', kicker: 'Lesson 8', html: `
+    <p>A <code>scene</code> is a named block of setup code — a menu, a level, a game-over screen. Switch between them with <code>goto_scene(name)</code>.</p>
+    <pre>${esc(TUT_SNIPPETS.scenes_basic)}</pre>
+    <button class="btn btn-primary try-btn" data-snippet="scenes_basic">▸ Try it</button>
+    <p>Declaring a <code>scene</code> doesn't run it immediately — it just registers the setup code under that name, ready for when you call <code>goto_scene()</code>.</p>
+  `},
+  { group: 'Building games', id: 'fullgame', title: 'Building a full game', kicker: 'Lesson 9', html: `
+    <p>Put all the pieces together — sprites, <code>update</code>, input, and a running score — and you get a real, playable game. Open the <strong>05 — full mini-game: Dodger</strong> example from the toolbar dropdown to see it in one place — pressing Run jumps you straight to the Game tab.</p>
+    <p>Dodger's structure, in order:</p>
+    <ul>
+      <li>One <code>sprite</code> for the player, controlled with <code>key_down()</code> inside <code>update</code>.</li>
+      <li>A list (<code>falling</code>) holding the active obstacles, built with <code>vec()</code> positions.</li>
+      <li>A timer variable that spawns a new obstacle every half-second.</li>
+      <li>A <code>while</code> loop each frame that moves every obstacle downward.</li>
+      <li>A rectangle-overlap check written by hand against the player, ending the game on a hit.</li>
+    </ul>
+    <p>This is the same pattern almost every simple game follows: declare your objects, move them in <code>update</code>, react to input, check for collisions, track state in plain variables. Once that loop feels natural, you can build almost anything from it.</p>
+  `},
+  { group: 'Reference', id: 'reference', title: 'Language reference', kicker: 'Quick lookup', html: `
+    <h3>Keywords</h3>
+    <table>
+      <tr><th>keyword</th><th>use</th></tr>
+      <tr><td><code>let</code></td><td>declare a variable</td></tr>
+      <tr><td><code>if / else</code></td><td>branching</td></tr>
+      <tr><td><code>while</code></td><td>loop while a condition holds</td></tr>
+      <tr><td><code>for x in ...</code></td><td>loop over a list, string, or range()</td></tr>
+      <tr><td><code>fn</code></td><td>declare a function</td></tr>
+      <tr><td><code>return</code></td><td>return a value from a function</td></tr>
+      <tr><td><code>break</code></td><td>exit a loop early</td></tr>
+      <tr><td><code>print</code></td><td>write a line to the console</td></tr>
+      <tr><td><code>sprite</code></td><td>declare a game object</td></tr>
+      <tr><td><code>scene</code></td><td>declare a named setup block</td></tr>
+      <tr><td><code>update</code></td><td>code that runs every frame</td></tr>
+      <tr><td><code>on key / on click / on collide / on start</code></td><td>event handlers</td></tr>
+      <tr><td><code>vec(x, y)</code></td><td>a 2D vector value</td></tr>
+      <tr><td><code>and / or / not</code></td><td>boolean logic</td></tr>
+    </table>
+    <h3>Built-in functions</h3>
+    <table>
+      <tr><th>function</th><th>returns</th></tr>
+      <tr><td><code>key_down(key)</code></td><td>true if that key is currently held</td></tr>
+      <tr><td><code>clicked(sprite)</code></td><td>true for one frame when that sprite is clicked or tapped — works with mouse and touch (Android/iOS)</td></tr>
+      <tr><td><code>clear(color)</code></td><td>fills the canvas — call inside update for manual drawing</td></tr>
+      <tr><td><code>width() / height()</code></td><td>canvas size in pixels</td></tr>
+      <tr><td><code>goto_scene(name)</code></td><td>switches to another scene</td></tr>
+      <tr><td><code>destroy(sprite)</code></td><td>removes a sprite from the game</td></tr>
+      <tr><td><code>distance(a, b)</code></td><td>distance between two vectors or sprites</td></tr>
+      <tr><td><code>draw_text(text, x, y, color, size)</code></td><td>draws text directly on the canvas</td></tr>
+      <tr><td><code>len(x)</code></td><td>length of a list or string</td></tr>
+      <tr><td><code>range(a, b)</code></td><td>a list of numbers from a up to b</td></tr>
+      <tr><td><code>str(x) / num(x)</code></td><td>convert to string / number</td></tr>
+      <tr><td><code>abs / min / max / floor / sqrt</code></td><td>ordinary math helpers</td></tr>
+      <tr><td><code>random(a, b)</code></td><td>a random number in that range (0–1 if called with no args)</td></tr>
+    </table>
+  `},
+];
+
+function esc(s){ return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+function renderTutNav(){
+  const nav = document.getElementById('tut-nav');
+  nav.innerHTML = '';
+  let lastGroup = null;
+  for (const lesson of TUTORIAL){
+    if (lesson.group !== lastGroup){
+      const label = document.createElement('div');
+      label.className = 'grp-label';
+      label.textContent = lesson.group;
+      nav.appendChild(label);
+      lastGroup = lesson.group;
+    }
+    const btn = document.createElement('button');
+    btn.textContent = lesson.title;
+    btn.dataset.id = lesson.id;
+    btn.addEventListener('click', () => showLesson(lesson.id));
+    nav.appendChild(btn);
+  }
+}
+
+function showLesson(id){
+  const idx = TUTORIAL.findIndex(l => l.id === id);
+  const lesson = TUTORIAL[idx];
+  const content = document.getElementById('tut-content');
+  content.innerHTML = `
+    <div class="lesson-kicker">${lesson.kicker}</div>
+    <h2>${lesson.title}</h2>
+    ${lesson.html}
+    <div class="lesson-nav-footer">
+      ${idx > 0 ? `<button class="btn btn-ghost" data-nav="${TUTORIAL[idx-1].id}">← ${TUTORIAL[idx-1].title}</button>` : '<span></span>'}
+      ${idx < TUTORIAL.length-1 ? `<button class="btn btn-ghost" data-nav="${TUTORIAL[idx+1].id}">${TUTORIAL[idx+1].title} →</button>` : '<span></span>'}
+    </div>
+  `;
+  content.scrollTop = 0;
+  for (const b of document.querySelectorAll('#tut-nav button')) b.classList.toggle('active', b.dataset.id === id);
+  for (const b of content.querySelectorAll('.try-btn')){
+    b.addEventListener('click', () => {
+      const key = b.dataset.snippet;
+      switchTab('code');
+      if (editor) { editor.setValue(TUT_SNIPPETS[key]); doRun(); }
+    });
+  }
+  for (const b of content.querySelectorAll('[data-nav]')){
+    b.addEventListener('click', () => showLesson(b.dataset.nav));
+  }
+}
+
+renderTutNav();
+showLesson('intro');
+
+function switchTab(name){
+  for (const b of document.querySelectorAll('.tab-btn')) b.classList.toggle('active', b.dataset.tab === name);
+  document.getElementById('view-code').classList.toggle('active', name === 'code');
+  document.getElementById('view-game').classList.toggle('active', name === 'game');
+  document.getElementById('view-tutorial').classList.toggle('active', name === 'tutorial');
+  document.getElementById('ide-toolbar').style.display = (name === 'tutorial') ? 'none' : 'flex';
+  if (name === 'code' && editor) setTimeout(() => editor.refresh(), 0);
+}
+for (const b of document.querySelectorAll('.tab-btn')) b.addEventListener('click', () => switchTab(b.dataset.tab));
+</script>
+</body>
+</html>
